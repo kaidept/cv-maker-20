@@ -823,57 +823,11 @@
           setData(presetData);
         };
 
-        const exportPdf = async () => {
-  const page = document.getElementById("cv-page-root");
-  if (!page) return;
-
-  try {
-    // Ekranı canvas'a çevir
-    const canvas = await html2canvas(page, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#f8f5e9",
-    });
-
-    const imgData = canvas.toDataURL("image/png");
-
-    const { jsPDF } = window.jspdf || {};
-    if (!jsPDF) {
-      alert("PDF motoru (jsPDF) yüklenemedi. Script tag'lerini kontrol et.");
-      return;
-    }
-
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-
-    // Tarayıcı tespiti
-    const ua = navigator.userAgent || "";
-    const isIOS = /iPad|iPhone|iPod/.test(ua);
-    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-
-    if (isIOS || isSafari) {
-      // Safari / iOS: direkt indirme yerine yeni sekme / aynı sekmede PDF açmaya zorla
-      const blob = pdf.output("blob");
-      const blobUrl = URL.createObjectURL(blob);
-
-      // Bazı ortamlarda window.open bloklanıyor, o yüzden hem deneriz hem fallback yaparız
-      const newWindow = window.open(blobUrl, "_blank");
-      if (!newWindow || newWindow.closed || typeof newWindow.closed === "undefined") {
-        // Yeni pencere açılamıyorsa aynı sayfaya yönlendir
-        window.location.href = blobUrl;
-      }
-    } else {
-      // Normal masaüstü tarayıcılar
-      pdf.save("cv.pdf");
-    }
-  } catch (err) {
-    console.error("PDF oluşturma hatası:", err);
-    alert("PDF oluştururken bir hata oluştu.");
-  }
+       const exportPdf = () => {
+  // Sadece tarayıcının print / pdf motorunu tetikliyoruz
+  window.print();
 };
+
 
 
 
