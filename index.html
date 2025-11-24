@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Multi-step CV Builder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- React + Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- PDF için html2canvas + jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+      integrity="sha512-BNa5lQ8Hk8p0tGZq7FqjykZqhH7gQFs0mFKFq1v8CgpFK7kERK0l9wZ6xkU1WfG6vsUPd1qsNGtP+If0zYem3g=="
+      crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+      integrity="sha512-/F64pVxR8aXvYUk82s0V5R7mS7VZQ9mvC1n+8py0XGrGveWvU5V9k0ZzYxU6M5QHsqXvYpNG0Ax7G8YqPp+Kkw=="
+      crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(circle at top, #050507 0, #020308 55%, #000 100%);
+        color: #f8f5e9; /* ivory-ish text on dark */
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      #root {
+        min-height: 100vh;
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        padding: 16px;
+      }
+      .app-shell {
+        width: 100%;
+        max-width: 1180px;
+        background: rgba(5, 5, 7, 0.96); /* jet black base */
+        border-radius: 16px;
+        border: 1px solid #1f2937;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.9);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      @media (min-width: 840px) {
+        .app-shell {
+          flex-direction: row;
+          height: 80vh;
+        }
+      }
+      .left-panel,
+      .right-panel {
+        padding: 16px 16px 18px;
+      }
+      .left-panel {
+        flex: 1.1;
+        border-bottom: 1px solid #111827;
+      }
+      .right-panel {
+        flex: 1;
+        background: #020308;
+      }
+      @media (min-width: 840px) {
+        .left-panel {
+          border-bottom: none;
+          border-right: 1px solid #111827;
+        }
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .title {
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .subtitle {
+        font-size: 12px;
+        color: #9ca3af;
+        margin-top: 4px;
+      }
+      .badge-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+      }
+      .badge {
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid #374151;
+        background: rgba(15, 23, 42, 0.9);
+        color: #e5e7eb;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .badge-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #22c55e;
+        box-shadow: 0 0 10px rgba(34, 197, 94, 0.8);
+      }
+
+      .lang-toggle {
+        display: inline-flex;
+        border-radius: 999px;
+        border: 1px solid #374151;
+        overflow: hidden;
+      }
+      .lang-btn {
+        font-size: 11px;
+        padding: 4px 8px;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        color: #9ca3af;
+      }
+      .lang-btn.active {
+        background: #f8f5e9;
+        color: #050507;
+      }
+
+      .preset-row {
+        margin-bottom: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        font-size: 11px;
+        color: #6b7280;
+      }
+
+      .btn {
+        border-radius: 999px;
+        border: none;
+        padding: 7px 11px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-family: inherit;
+      }
+      .btn-primary {
+        background: linear-gradient(90deg, #facc15, #f97316);
+        color: #111827;
+      }
+      .btn-primary:hover {
+        filter: brightness(1.05);
+      }
+      .btn-secondary {
+        background: #050507;
+        color: #f8f5e9;
+        border: 1px solid #374151;
+      }
+      .btn-secondary:hover {
+        border-color: #e5e7eb;
+      }
+      .btn-ghost {
+        background: transparent;
+        color: #9ca3af;
+        border: 1px solid #374151;
+      }
+      .btn-ghost:hover {
+        color: #f8f5e9;
+        border-color: #e5e7eb;
+      }
+
+      .progress-bar-wrapper {
+        margin-bottom: 10px;
+      }
+      .progress-top {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: #9ca3af;
+        margin-bottom: 4px;
+      }
+      .progress-bar {
+        width: 100%;
+        height: 6px;
+        border-radius: 999px;
+        background: #020308;
+        overflow: hidden;
+        border: 1px solid #111827;
+      }
+      .progress-bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #facc15, #22c55e);
+        transition: width 0.2s ease-out;
+      }
+
+      .small-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: #6b7280;
+        margin-bottom: 4px;
+      }
+      .linkish {
+        text-decoration: underline;
+        cursor: pointer;
+      }
+
+      .question-box {
+        border-radius: 12px;
+        background: #020308;
+        border: 1px solid #1f2937;
+        padding: 12px;
+        margin-bottom: 10px;
+      }
+      .question-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #9ca3af;
+        margin-bottom: 4px;
+      }
+      .question-text {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .field-extra {
+        font-size: 11px;
+        color: #6b7280;
+        margin-bottom: 6px;
+      }
+      textarea,
+      input {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid #374151;
+        background: #050507;
+        color: #f8f5e9;
+        font-size: 13px;
+        padding: 7px 8px;
+        resize: vertical;
+        min-height: 34px;
+        outline: none;
+      }
+      textarea:focus,
+      input:focus {
+        border-color: #facc15;
+        box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.25);
+      }
+      textarea {
+        min-height: 70px;
+      }
+      .nav-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 8px;
+        margin-bottom: 2px;
+      }
+
+      .all-questions-scroll {
+        margin-top: 8px;
+        max-height: calc(100% - 100px);
+        overflow: auto;
+        padding-right: 4px;
+      }
+
+      /* Right panel */
+      .preview-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .preview-title {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #9ca3af;
+      }
+      .cv-wrapper {
+        background: #f8f5e9; /* ivory */
+        color: #111827;
+        border-radius: 12px;
+        padding: 18px 18px 20px;
+        height: calc(100% - 30px);
+        overflow: auto;
+        border: 1px solid #e5e7eb;
+      }
+      @media (max-width: 839px) {
+        .cv-wrapper {
+          height: auto;
+          max-height: 55vh;
+        }
+      }
+      .cv-page {
+        max-width: 800px;
+        margin: 0 auto;
+        font-size: 12px;
+        line-height: 1.4;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .cv-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+      }
+      .cv-name-role {
+        flex: 2;
+      }
+      .cv-name {
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+      }
+      .cv-role {
+        font-size: 12px;
+        font-weight: 600;
+        color: #4b5563;
+      }
+      .cv-contact {
+        flex: 1.2;
+        font-size: 11px;
+        text-align: right;
+      }
+      .cv-contact div {
+        margin-bottom: 2px;
+      }
+      .cv-section {
+        margin-bottom: 8px;
+      }
+      .cv-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #6b7280;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 4px;
+        padding-bottom: 2px;
+      }
+      .cv-summary {
+        font-size: 12px;
+      }
+      .cv-two-cols {
+        display: flex;
+        gap: 16px;
+      }
+      .cv-col {
+        flex: 1;
+      }
+      .cv-item-title {
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 1px;
+      }
+      .cv-item-meta {
+        font-size: 11px;
+        color: #6b7280;
+        margin-bottom: 3px;
+      }
+      .cv-bullets {
+        padding-left: 14px;
+        margin: 0;
+      }
+      .cv-bullets li {
+        margin-bottom: 2px;
+      }
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 2px;
+      }
+      .chip-skill {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        color: #111827;
+      }
+      .footer-note {
+        margin-top: 6px;
+        font-size: 10px;
+        color: #6b7280;
+        text-align: right;
+      }
+
+      .layout-toggle {
+        display: inline-flex;
+        border-radius: 999px;
+        border: 1px solid #d4d4d4;
+        overflow: hidden;
+      }
+      .layout-btn {
+        font-size: 11px;
+        padding: 4px 8px;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        color: #6b7280;
+      }
+      .layout-btn.active {
+        background: #111827;
+        color: #f8f5e9;
+      }
+
+      .advanced-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: #9ca3af;
+        margin: 4px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState } = React;
+
+      const initialData = {
+        fullName: "",
+        role: "",
+        shortHeadline: "",
+        email: "",
+        phone: "",
+        location: "",
+        website: "",
+        linkedin: "",
+        github: "",
+        summary: "",
+        // Education
+        eduDegree: "",
+        eduSchool: "",
+        eduYears: "",
+        // Experience 1
+        exp1Title: "",
+        exp1Company: "",
+        exp1Years: "",
+        exp1Bullets: "",
+        // Experience 2 (advanced)
+        exp2Title: "",
+        exp2Company: "",
+        exp2Years: "",
+        exp2Bullets: "",
+        // Skills & extras
+        coreSkills: "",
+        tools: "",
+        languages: "",
+        extraProjects: "",
+      };
+
+      function getQuestions(lang) {
+        const isTR = lang === "tr";
+        const t = (tr, en) => (isTR ? tr : en);
+
+        return [
+          {
+            key: "fullName",
+            label: t("Soru 1", "Question 1"),
+            text: t("Adın ve soyadın nedir?", "What is your full name?"),
+            placeholder: t("Örn: Berkay Aytekin", "e.g. John Doe"),
+            type: "input",
+          },
+          {
+            key: "role",
+            label: t("Soru 2", "Question 2"),
+            text: t(
+              "Kendini hangi profesyonel unvanla tanımlıyorsun?",
+              "Which professional title describes you best?"
+            ),
+            extra: t(
+              "Örn: Filmmaker & Video Editor, Frontend Developer, Product Designer",
+              "E.g. Filmmaker & Video Editor, Frontend Developer, Product Designer"
+            ),
+            placeholder: t(
+              "Örn: Filmmaker & Creative Director",
+              "e.g. Filmmaker & Creative Director"
+            ),
+            type: "input",
+          },
+          {
+            key: "shortHeadline",
+            label: t("Soru 3", "Question 3"),
+            text: t(
+              "Kendini 1 satırda özetle (headline).",
+              "Summarize yourself in one line (headline)."
+            ),
+            extra: t(
+              "Bu, isim altına girecek kısa bir cümle. Örn: Hikâye odaklı, markalı içerik üreten yönetmen.",
+              "This will sit under your name. E.g. Story-driven filmmaker focused on branded content."
+            ),
+            type: "textarea",
+          },
+          {
+            key: "email",
+            label: t("Soru 4", "Question 4"),
+            text: t("E-posta adresin?", "Your email address?"),
+            placeholder: "name@domain.com",
+            type: "input",
+          },
+          {
+            key: "phone",
+            label: t("Soru 5", "Question 5"),
+            text: t("Telefon numaran?", "Your phone number?"),
+            placeholder: t("Örn: +90 5xx xxx xx xx", "e.g. +90 5xx xxx xx xx"),
+            type: "input",
+          },
+          {
+            key: "location",
+            label: t("Soru 6", "Question 6"),
+            text: t(
+              "Hangi şehir / ülkede yaşıyorsun?",
+              "Which city / country are you based in?"
+            ),
+            placeholder: t("Örn: Istanbul, Turkey", "e.g. Istanbul, Turkey"),
+            type: "input",
+          },
+          {
+            key: "website",
+            label: t("Soru 7", "Question 7"),
+            text: t(
+              "Kişisel web siten / portfolyon var mı?",
+              "Do you have a personal website / portfolio?"
+            ),
+            extra: t("Yoksa boş bırak.", "Leave empty if none."),
+            placeholder: t("Örn: https://kaidept.com", "e.g. https://yourname.com"),
+            type: "input",
+          },
+          {
+            key: "linkedin",
+            label: t("Soru 8", "Question 8"),
+            text: t("LinkedIn profilin?", "Your LinkedIn profile?"),
+            placeholder: "linkedin.com/in/username",
+            type: "input",
+          },
+          {
+            key: "github",
+            label: t("Soru 9", "Question 9"),
+            text: t(
+              "GitHub / Behance / başka önemli bir profil linki?",
+              "GitHub / Behance / any key profile link?"
+            ),
+            extra: t(
+              "Developer isen GitHub, tasarımcıysan Behance/Dribbble vb.",
+              "Use GitHub if dev, Behance/Dribbble if designer, etc."
+            ),
+            type: "input",
+          },
+          {
+            key: "summary",
+            label: t("Soru 10", "Question 10"),
+            text: t(
+              "Kariyer özetini 3–4 cümlede anlat.",
+              "Write a 3–4 sentence career summary."
+            ),
+            extra: t(
+              "Bu, CV’nin en üstündeki “Summary / About” kısmı olacak.",
+              "This will be the Summary / About section of your CV."
+            ),
+            type: "textarea",
+          },
+          {
+            key: "eduDegree",
+            label: t("Soru 11", "Question 11"),
+            text: t(
+              "En güçlü eğitim derecen ne? (Bölüm + derece)",
+              "What is your main degree? (Field + degree)"
+            ),
+            placeholder: t("Örn: BA in Film & Television", "e.g. BA in Film & Television"),
+            type: "input",
+          },
+          {
+            key: "eduSchool",
+            label: t("Soru 12", "Question 12"),
+            text: t("Bu eğitimi hangi okulda aldın?", "Which institution did you study at?"),
+            placeholder: t("Örn: Yeditepe University", "e.g. Yeditepe University"),
+            type: "input",
+          },
+          {
+            key: "eduYears",
+            label: t("Soru 13", "Question 13"),
+            text: t("Eğitim tarih aralığı?", "Education years / period?"),
+            placeholder: t("Örn: 2020 – 2024", "e.g. 2020 – 2024"),
+            type: "input",
+          },
+          {
+            key: "exp1Title",
+            label: t("Soru 14", "Question 14"),
+            text: t(
+              "Son / en önemli iş deneyiminde pozisyonun neydi?",
+              "What was your latest / key job title?"
+            ),
+            placeholder: t("Örn: Freelance Filmmaker", "e.g. Freelance Filmmaker"),
+            type: "input",
+          },
+          {
+            key: "exp1Company",
+            label: t("Soru 15", "Question 15"),
+            text: t("Bu işi kimin için / nerede yaptın?", "For whom / where did you work?"),
+            placeholder: t("Örn: Various Clients / Freelance", "e.g. Various clients / freelance"),
+            type: "input",
+          },
+          {
+            key: "exp1Years",
+            label: t("Soru 16", "Question 16"),
+            text: t("Bu deneyimin tarih aralığı?", "Time period for this role?"),
+            placeholder: t("Örn: 2022 – Present", "e.g. 2022 – Present"),
+            type: "input",
+          },
+          {
+            key: "exp1Bullets",
+            label: t("Soru 17", "Question 17"),
+            text: t(
+              "Bu işte yaptığın 3–5 önemli şeyi madde madde yaz.",
+              "List 3–5 key responsibilities / achievements in this role."
+            ),
+            extra: t(
+              "Her maddeyi yeni satıra yaz.\nÖrn:\n- Markalı video içerikler\n- 20+ kampanya yönettim ve kurguladım",
+              "Write each point on a new line.\nE.g.\n- Short-form branded videos\n- Directed and edited 20+ campaigns"
+            ),
+            type: "textarea",
+          },
+          {
+            key: "coreSkills",
+            label: t("Soru 18", "Question 18"),
+            text: t(
+              "Çekirdek yeteneklerin neler? (virgülle ayır)",
+              "What are your core skills? (separated by commas)"
+            ),
+            extra: t(
+              "Örn: Cinematography, Editing, Color Grading, Client Communication",
+              "E.g. Cinematography, Editing, Color Grading, Client Communication"
+            ),
+            type: "textarea",
+          },
+          {
+            key: "tools",
+            label: t("Soru 19", "Question 19"),
+            text: t(
+              "Kullandığın araçlar / teknolojiler? (virgülle ayır)",
+              "What tools / technologies do you use? (comma separated)"
+            ),
+            extra: t(
+              "Örn: Premiere Pro, DaVinci Resolve, After Effects, Figma, Notion",
+              "E.g. Premiere Pro, DaVinci Resolve, After Effects, Figma, Notion"
+            ),
+            type: "textarea",
+          },
+          {
+            key: "languages",
+            label: t("Soru 20", "Question 20"),
+            text: t(
+              "Hangi dilleri konuşuyorsun? (seviye ile yaz)",
+              "Which languages do you speak? (with level)"
+            ),
+            extra: t(
+              "Örn: Turkish – Native, English – Advanced",
+              "E.g. Turkish – Native, English – Advanced"
+            ),
+            type: "textarea",
+          },
+        ];
+      }
+
+      function getPresets() {
+        return {
+          student: {
+            fullName: "Student Name",
+            role: "Junior Software Developer",
+            shortHeadline:
+              "Final-year CS student focused on web development and clean, maintainable code.",
+            email: "student@example.com",
+            phone: "+90 5xx xxx xx xx",
+            location: "Istanbul, Turkey",
+            website: "https://portfolio.example.com",
+            linkedin: "linkedin.com/in/student",
+            github: "github.com/student",
+            summary:
+              "Computer engineering student passionate about frontend development, REST APIs and modern JavaScript frameworks. Experienced with small freelance projects and hackathons. Comfortable working in fast-paced, collaborative environments and learning new tools quickly.",
+            eduDegree: "BSc in Computer Engineering",
+            eduSchool: "Some University",
+            eduYears: "2021 – Present",
+            exp1Title: "Junior Web Developer (Part-time)",
+            exp1Company: "Local Agency / Freelance",
+            exp1Years: "2023 – Present",
+            exp1Bullets:
+              "- Built and maintained small React-based landing pages\n- Implemented responsive designs from Figma files\n- Collaborated with designers and senior devs on 5+ client projects\n- Fixed UI bugs and improved Lighthouse performance scores",
+            exp2Title: "",
+            exp2Company: "",
+            exp2Years: "",
+            exp2Bullets: "",
+            coreSkills:
+              "JavaScript, TypeScript, React, REST APIs, Responsive Design, Problem Solving",
+            tools: "VS Code, Git, GitHub, Figma, Postman, Chrome DevTools",
+            languages: "Turkish – Native, English – Advanced",
+            extraProjects:
+              "Personal Portfolio Website – Built with React and deployed on Vercel.\nHackathon Project – Team-based web app for task management.",
+          },
+          juniorDev: {
+            fullName: "Developer Name",
+            role: "Frontend Developer",
+            shortHeadline:
+              "Frontend dev who cares about performance, clean UI and smooth DX.",
+            email: "dev@example.com",
+            phone: "+90 5xx xxx xx xx",
+            location: "Remote / Istanbul, Turkey",
+            website: "https://dev.example.com",
+            linkedin: "linkedin.com/in/dev",
+            github: "github.com/dev",
+            summary:
+              "Frontend developer with 2+ years of experience building React-based interfaces. Strong focus on DX, component architecture and accessibility. Worked with cross-functional teams to ship production-ready features used by thousands of users.",
+            eduDegree: "BSc in Software Engineering",
+            eduSchool: "Some University",
+            eduYears: "2018 – 2022",
+            exp1Title: "Frontend Developer",
+            exp1Company: "Product Company",
+            exp1Years: "2022 – Present",
+            exp1Bullets:
+              "- Implemented complex UI flows in React/TypeScript\n- Collaborated with designers on component library and design system\n- Improved bundle size and performance using code splitting and caching\n- Participated in code reviews and mentoring interns",
+            exp2Title: "Freelance Web Developer",
+            exp2Company: "Various Clients",
+            exp2Years: "2020 – 2022",
+            exp2Bullets:
+              "- Built marketing websites and simple dashboards for small businesses\n- Integrated payment and auth providers\n- Responsible for deployment and basic SEO",
+            coreSkills:
+              "React, TypeScript, Next.js, State Management, UI Architecture, Accessibility",
+            tools: "Git, GitHub, Jira, Figma, Chrome DevTools, Vercel",
+            languages: "Turkish – Native, English – Advanced",
+            extraProjects:
+              "Open-source contributions – small PRs to React ecosystem libraries.\nSide Projects – minimal SaaS tools and dashboard experiments.",
+          },
+          filmmaker: {
+            fullName: "Filmmaker Name",
+            role: "Filmmaker & Video Editor",
+            shortHeadline:
+              "Story-first filmmaker crafting cinematic visuals for brands and artists.",
+            email: "film@example.com",
+            phone: "+90 5xx xxx xx xx",
+            location: "Istanbul, Turkey",
+            website: "https://reel.example.com",
+            linkedin: "linkedin.com/in/filmmaker",
+            github: "",
+            summary:
+              "Filmmaker and editor focused on branded content, short films and music videos. Experienced in directing, production planning and post-production workflows. Comfortable managing both creative and practical sides of a shoot, from treatment to final delivery.",
+            eduDegree: "BA in Film & Television",
+            eduSchool: "Some University",
+            eduYears: "2019 – 2023",
+            exp1Title: "Freelance Filmmaker & Editor",
+            exp1Company: "Various Clients",
+            exp1Years: "2020 – Present",
+            exp1Bullets:
+              "- Directed and edited short-form branded videos\n- Shot and graded music videos and social campaigns\n- Managed small sets: crew, schedule and client communication\n- Delivered content optimized for Instagram, TikTok and YouTube",
+            exp2Title: "Production Assistant / Set Runner",
+            exp2Company: "Production Companies",
+            exp2Years: "2019 – 2021",
+            exp2Bullets:
+              "- Supported production teams on set logistics\n- Assisted camera and lighting crews\n- Helped with location management and call sheets",
+            coreSkills:
+              "Directing, Cinematography, Editing, Storytelling, Client Communication",
+            tools: "DaVinci Resolve, Premiere Pro, After Effects, Photoshop, Notion",
+            languages: "Turkish – Native, English – Upper-Intermediate",
+            extraProjects:
+              "Short Film – Festival-selected narrative short as writer/director.\nSocial Content – Ongoing series of vertical videos for local brands.",
+          },
+        };
+      }
+
+      function App() {
+        const [language, setLanguage] = useState("tr");
+        const [data, setData] = useState(initialData);
+        const [step, setStep] = useState(0);
+        const [showAll, setShowAll] = useState(false);
+        const [layout, setLayout] = useState("classic"); // 'classic' | 'minimal'
+
+        const questions = getQuestions(language);
+        const total = questions.length;
+        const progress = Math.round(((step + 1) / total) * 100);
+        const currentQuestion = questions[step];
+
+        const isTR = language === "tr";
+        const txt = (tr, en) => (isTR ? tr : en);
+
+        const updateField = (key, value) => {
+          setData((prev) => ({ ...prev, [key]: value }));
+        };
+
+        const handleNext = () => {
+          setStep((prev) => (prev < total - 1 ? prev + 1 : prev));
+        };
+
+        const handlePrev = () => {
+          setStep((prev) => (prev > 0 ? prev - 1 : prev));
+        };
+
+        const handlePreset = (type) => {
+          const presets = getPresets();
+          const presetData = presets[type];
+          if (!presetData) return;
+          setData(presetData);
+        };
+
+        const exportPdf = async () => {
+          const page = document.getElementById("cv-page-root");
+          if (!page || !window.jspdf || !window.html2canvas && !window.html2canvas) return;
+
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF("p", "mm", "a4");
+
+          // Geçici olarak sayfayı biraz büyüt (render kalitesi için)
+          const canvas = await html2canvas(page, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: "#f8f5e9",
+          });
+
+          const imgData = canvas.toDataURL("image/png");
+          const imgProps = pdf.getImageProperties(imgData);
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+          pdf.save("cv.pdf");
+        };
+
+        const toggleAll = () => setShowAll((prev) => !prev);
+
+        const resetData = () => {
+          setData(initialData);
+          setStep(0);
+        };
+
+        return (
+          <div className="app-shell">
+            <div className="left-panel">
+              <div className="header">
+                <div>
+                  <div className="title">
+                    {txt("Çok Adımlı CV Oluşturucu", "Multi-step CV Builder")}
+                  </div>
+                  <div className="subtitle">
+                    {txt(
+                      "20 soruyu doldur, sağda profesyonel bir CV otomatik oluşsun. İstersen PDF olarak indir.",
+                      "Answer the questions and a clean CV is generated on the right. Export as PDF anytime."
+                    )}
+                  </div>
+                </div>
+                <div className="badge-row">
+                  <div className="badge">
+                    <span className="badge-dot" />
+                    <span>{txt("Sadece tarayıcıda • Veri kaydı yok", "Local only • No data stored")}</span>
+                  </div>
+                  <div className="lang-toggle">
+                    <button
+                      className={`lang-btn ${language === "tr" ? "active" : ""}`}
+                      onClick={() => setLanguage("tr")}
+                    >
+                      TR
+                    </button>
+                    <button
+                      className={`lang-btn ${language === "en" ? "active" : ""}`}
+                      onClick={() => setLanguage("en")}
+                    >
+                      EN
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="preset-row">
+                <span>{txt("Hazır doldur:", "Quick presets:")} </span>
+                <button className="btn btn-ghost" onClick={() => handlePreset("student")}>
+                  {txt("Öğrenci", "Student")}
+                </button>
+                <button className="btn btn-ghost" onClick={() => handlePreset("juniorDev")}>
+                  Junior Dev
+                </button>
+                <button className="btn btn-ghost" onClick={() => handlePreset("filmmaker")}>
+                  Filmmaker
+                </button>
+              </div>
+
+              <div className="progress-bar-wrapper">
+                <div className="progress-top">
+                  <span>
+                    {txt("Soru", "Question")} {step + 1}/{total}
+                  </span>
+                  <span>{progress}%</span>
+                </div>
+                <div className="progress-bar">
+                  <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+
+              <div className="small-row">
+                <span>
+                  {txt("Tüm soruları form gibi görmek için", "To see all questions at once,")}
+                  {" "}
+                  <span className="linkish" onClick={toggleAll}>
+                    {showAll
+                      ? txt("tek soru moduna dön", "go back to step mode")
+                      : txt("“hepsini göster”e geç", "switch to “show all”")}
+                  </span>
+                </span>
+              </div>
+
+              {!showAll && (
+                <QuestionCard
+                  language={language}
+                  question={currentQuestion}
+                  value={data[currentQuestion.key] || ""}
+                  onChange={updateField}
+                  step={step}
+                  total={total}
+                  onNext={handleNext}
+                  onPrev={handlePrev}
+                />
+              )}
+
+              {showAll && (
+                <AllQuestions
+                  language={language}
+                  data={data}
+                  setData={setData}
+                  questions={questions}
+                  onJump={(idx) => {
+                    setStep(idx);
+                    setShowAll(false);
+                  }}
+                />
+              )}
+            </div>
+
+            <div className="right-panel">
+              <div className="preview-header-row">
+                <div>
+                  <div className="preview-title">
+                    {txt("Canlı CV Önizleme", "Live CV Preview")}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <div className="layout-toggle">
+                    <button
+                      className={`layout-btn ${layout === "classic" ? "active" : ""}`}
+                      onClick={() => setLayout("classic")}
+                    >
+                      {txt("Klasik", "Classic")}
+                    </button>
+                    <button
+                      className={`layout-btn ${layout === "minimal" ? "active" : ""}`}
+                      onClick={() => setLayout("minimal")}
+                    >
+                      {txt("Minimal", "Minimal")}
+                    </button>
+                  </div>
+                  <button className="btn btn-ghost" onClick={resetData}>
+                    {txt("Sıfırla", "Reset")}
+                  </button>
+                  <button className="btn btn-primary" onClick={exportPdf}>
+                    {txt("PDF İndir", "Download PDF")}
+                  </button>
+                </div>
+              </div>
+              <div id="cv-preview" className="cv-wrapper">
+                <div id="cv-page-root">
+                  <CVPreview data={data} language={language} layout={layout} />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      function QuestionCard({
+        language,
+        question,
+        value,
+        onChange,
+        step,
+        total,
+        onNext,
+        onPrev,
+      }) {
+        const isTR = language === "tr";
+        const txt = (tr, en) => (isTR ? tr : en);
+
+        const handleChange = (e) => {
+          onChange(question.key, e.target.value);
+        };
+
+        const isLast = step === total - 1;
+
+        return (
+          <div className="question-box">
+            <div className="question-label">{question.label}</div>
+            <div className="question-text">{question.text}</div>
+            {question.extra && (
+              <div className="field-extra">
+                {question.extra.split("\n").map((line, idx) => (
+                  <div key={idx}>{line}</div>
+                ))}
+              </div>
+            )}
+            {question.type === "textarea" ? (
+              <textarea
+                value={value}
+                onChange={handleChange}
+                placeholder={question.placeholder || ""}
+              />
+            ) : (
+              <input
+                value={value}
+                onChange={handleChange}
+                placeholder={question.placeholder || ""}
+              />
+            )}
+
+            <div className="nav-row">
+              <button className="btn btn-secondary" onClick={onPrev} disabled={step === 0}>
+                ← {txt("Geri", "Back")}
+              </button>
+              <button className="btn btn-primary" onClick={onNext}>
+                {isLast ? txt("Tamamla", "Finish") : txt("İleri", "Next")} →
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      function AllQuestions({ language, data, setData, questions, onJump }) {
+        const isTR = language === "tr";
+        const txt = (tr, en) => (isTR ? tr : en);
+
+        const handleChange = (key, value) => {
+          setData((prev) => ({ ...prev, [key]: value }));
+        };
+
+        return (
+          <div className="all-questions-scroll">
+            {questions.map((q, idx) => (
+              <div key={q.key} className="question-box" style={{ marginBottom: 8 }}>
+                <div className="small-row">
+                  <div className="question-label">{q.label}</div>
+                  <button className="btn btn-ghost" onClick={() => onJump(idx)}>
+                    {txt("Bu soruya git", "Go to this question")}
+                  </button>
+                </div>
+                <div className="question-text">{q.text}</div>
+                {q.extra && (
+                  <div className="field-extra">
+                    {q.extra.split("\n").map((line, i) => (
+                      <div key={i}>{line}</div>
+                    ))}
+                  </div>
+                )}
+                {q.type === "textarea" ? (
+                  <textarea
+                    value={data[q.key] || ""}
+                    onChange={(e) => handleChange(q.key, e.target.value)}
+                    placeholder={q.placeholder || ""}
+                  />
+                ) : (
+                  <input
+                    value={data[q.key] || ""}
+                    onChange={(e) => handleChange(q.key, e.target.value)}
+                    placeholder={q.placeholder || ""}
+                  />
+                )}
+              </div>
+            ))}
+
+            {/* Advanced section: 2nd experience + extra projects */}
+            <div className="advanced-label">
+              {txt("İleri Düzey Alanlar", "Advanced Fields")}
+            </div>
+            <div className="question-box">
+              <div className="question-label">{txt("Ek Deneyim", "Additional Experience")}</div>
+              <div className="field-extra">
+                {txt(
+                  "İkinci bir iş deneyimi eklemek istersen burayı doldur.",
+                  "Fill this if you want to add a second experience."
+                )}
+              </div>
+              <input
+                placeholder={txt("Pozisyon", "Job title")}
+                value={data.exp2Title || ""}
+                onChange={(e) => handleChange("exp2Title", e.target.value)}
+                style={{ marginBottom: 6 }}
+              />
+              <input
+                placeholder={txt("Şirket / Kurum", "Company / Organization")}
+                value={data.exp2Company || ""}
+                onChange={(e) => handleChange("exp2Company", e.target.value)}
+                style={{ marginBottom: 6 }}
+              />
+              <input
+                placeholder={txt("Tarih aralığı (Örn: 2021 – 2023)", "Time period (e.g. 2021 – 2023)")}
+                value={data.exp2Years || ""}
+                onChange={(e) => handleChange("exp2Years", e.target.value)}
+                style={{ marginBottom: 6 }}
+              />
+              <textarea
+                placeholder={txt(
+                  "Bu roldeki 3–5 önemli maddeyi yaz.",
+                  "Write 3–5 key points for this role."
+                )}
+                value={data.exp2Bullets || ""}
+                onChange={(e) => handleChange("exp2Bullets", e.target.value)}
+              />
+            </div>
+
+            <div className="question-box">
+              <div className="question-label">
+                {txt("Ek Projeler", "Extra Projects")}
+              </div>
+              <div className="field-extra">
+                {txt(
+                  "Önemli side project, kısa film, open-source vb. listele. Her satır bir proje olsun.",
+                  "List side projects, short films, open-source etc. One project per line."
+                )}
+              </div>
+              <textarea
+                value={data.extraProjects || ""}
+                onChange={(e) => handleChange("extraProjects", e.target.value)}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      function CVPreview({ data, language, layout }) {
+        const isTR = language === "tr";
+        const txt = (tr, en) => (isTR ? tr : en);
+
+        const name = data.fullName || txt("Ad Soyad", "Your Name");
+        const role = data.role || txt("Pozisyon / Unvan", "Your Role / Title");
+        const headline = data.shortHeadline;
+        const email = data.email;
+        const phone = data.phone;
+        const location = data.location;
+        const website = data.website;
+        const linkedin = data.linkedin;
+        const github = data.github;
+        const summary = data.summary;
+
+        const coreSkills = splitByComma(data.coreSkills);
+        const tools = splitByComma(data.tools);
+        const languagesArr = splitByLines(data.languages);
+
+        const exp1Bullets = splitByLines(data.exp1Bullets);
+        const exp2Bullets = splitByLines(data.exp2Bullets);
+        const extraProjects = splitByLines(data.extraProjects);
+
+        const educationExists = data.eduDegree || data.eduSchool || data.eduYears;
+        const exp1Exists = data.exp1Title || data.exp1Company || data.exp1Years || exp1Bullets.length;
+        const exp2Exists = data.exp2Title || data.exp2Company || data.exp2Years || exp2Bullets.length;
+        const skillsExists = coreSkills.length || tools.length;
+        const langsExists = languagesArr.length;
+
+        if (layout === "minimal") {
+          return (
+            <div className="cv-page">
+              <div className="cv-top">
+                <div className="cv-name-role">
+                  <div className="cv-name">{name}</div>
+                  <div className="cv-role">{role}</div>
+                  {headline && (
+                    <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                      {headline}
+                    </div>
+                  )}
+                </div>
+                <div className="cv-contact">
+                  {location && <div>{location}</div>}
+                  {email && <div>{email}</div>}
+                  {phone && <div>{phone}</div>}
+                  {website && <div>{website}</div>}
+                </div>
+              </div>
+
+              {summary && (
+                <div className="cv-section">
+                  <div className="cv-section-title">{txt("Özet", "Summary")}</div>
+                  <div className="cv-summary">{summary}</div>
+                </div>
+              )}
+
+              {(exp1Exists || exp2Exists) && (
+                <div className="cv-section">
+                  <div className="cv-section-title">{txt("Deneyim", "Experience")}</div>
+                  {exp1Exists && (
+                    <ExperienceBlock
+                      title={data.exp1Title}
+                      company={data.exp1Company}
+                      years={data.exp1Years}
+                      bullets={exp1Bullets}
+                    />
+                  )}
+                  {exp2Exists && (
+                    <ExperienceBlock
+                      title={data.exp2Title}
+                      company={data.exp2Company}
+                      years={data.exp2Years}
+                      bullets={exp2Bullets}
+                    />
+                  )}
+                </div>
+              )}
+
+              {educationExists && (
+                <div className="cv-section">
+                  <div className="cv-section-title">{txt("Eğitim", "Education")}</div>
+                  <div className="cv-item-title">{data.eduDegree}</div>
+                  {(data.eduSchool || data.eduYears) && (
+                    <div className="cv-item-meta">
+                      {data.eduSchool}
+                      {data.eduSchool && data.eduYears && " • "}
+                      {data.eduYears}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(skillsExists || langsExists) && (
+                <div className="cv-two-cols">
+                  {skillsExists && (
+                    <div className="cv-col">
+                      <div className="cv-section">
+                        <div className="cv-section-title">{txt("Yetenekler", "Skills")}</div>
+                        {coreSkills.length > 0 && (
+                          <div style={{ marginBottom: 4 }}>
+                            <div className="cv-item-title">
+                              {txt("Çekirdek", "Core")}
+                            </div>
+                            <div className="chip-row">
+                              {coreSkills.map((s, i) => (
+                                <span key={i} className="chip-skill">
+                                  {s}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {tools.length > 0 && (
+                          <div>
+                            <div className="cv-item-title">
+                              {txt("Araçlar & Teknolojiler", "Tools & Tech")}
+                            </div>
+                            <div className="chip-row">
+                              {tools.map((s, i) => (
+                                <span key={i} className="chip-skill">
+                                  {s}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {langsExists && (
+                    <div className="cv-col">
+                      <div className="cv-section">
+                        <div className="cv-section-title">{txt("Diller", "Languages")}</div>
+                        <ul className="cv-bullets">
+                          {languagesArr.map((lang, i) => (
+                            <li key={i}>{lang}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {extraProjects.length > 0 && (
+                <div className="cv-section">
+                  <div className="cv-section-title">
+                    {txt("Ek Projeler", "Extra Projects")}
+                  </div>
+                  <ul className="cv-bullets">
+                    {extraProjects.map((p, i) => (
+                      <li key={i}>{p}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="footer-note">
+                {txt(
+                  "20 Soruluk CV Aracından üretildi • Soldaki alanları güncelle, tekrar PDF al.",
+                  "Generated with the Multi-step CV Builder • Edit inputs and re-export as PDF."
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        // CLASSIC (two-column) layout
+        return (
+          <div className="cv-page">
+            <div className="cv-top">
+              <div className="cv-name-role">
+                <div className="cv-name">{name}</div>
+                <div className="cv-role">{role}</div>
+                {headline && (
+                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                    {headline}
+                  </div>
+                )}
+              </div>
+              <div className="cv-contact">
+                {location && <div>{location}</div>}
+                {email && <div>{email}</div>}
+                {phone && <div>{phone}</div>}
+                {website && <div>{website}</div>}
+                {linkedin && <div>{linkedin}</div>}
+                {github && <div>{github}</div>}
+              </div>
+            </div>
+
+            {summary && (
+              <div className="cv-section">
+                <div className="cv-section-title">{txt("Özet", "Summary")}</div>
+                <div className="cv-summary">{summary}</div>
+              </div>
+            )}
+
+            <div className="cv-two-cols">
+              <div className="cv-col">
+                {educationExists && (
+                  <div className="cv-section">
+                    <div className="cv-section-title">{txt("Eğitim", "Education")}</div>
+                    <div className="cv-item-title">{data.eduDegree}</div>
+                    {(data.eduSchool || data.eduYears) && (
+                      <div className="cv-item-meta">
+                        {data.eduSchool}
+                        {data.eduSchool && data.eduYears && " • "}
+                        {data.eduYears}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(coreSkills.length > 0 || tools.length > 0) && (
+                  <div className="cv-section">
+                    <div className="cv-section-title">{txt("Yetenekler", "Skills")}</div>
+                    {coreSkills.length > 0 && (
+                      <div style={{ marginBottom: 4 }}>
+                        <div className="cv-item-title">
+                          {txt("Çekirdek", "Core")}
+                        </div>
+                        <div className="chip-row">
+                          {coreSkills.map((s, i) => (
+                            <span key={i} className="chip-skill">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {tools.length > 0 && (
+                      <div>
+                        <div className="cv-item-title">
+                          {txt("Araçlar & Teknolojiler", "Tools & Tech")}
+                        </div>
+                        <div className="chip-row">
+                          {tools.map((s, i) => (
+                            <span key={i} className="chip-skill">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {languagesArr.length > 0 && (
+                  <div className="cv-section">
+                    <div className="cv-section-title">{txt("Diller", "Languages")}</div>
+                    <ul className="cv-bullets">
+                      {languagesArr.map((lang, i) => (
+                        <li key={i}>{lang}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {extraProjects.length > 0 && (
+                  <div className="cv-section">
+                    <div className="cv-section-title">
+                      {txt("Ek Projeler", "Extra Projects")}
+                    </div>
+                    <ul className="cv-bullets">
+                      {extraProjects.map((p, i) => (
+                        <li key={i}>{p}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className="cv-col">
+                {(exp1Exists || exp2Exists) && (
+                  <div className="cv-section">
+                    <div className="cv-section-title">{txt("Deneyim", "Experience")}</div>
+
+                    {exp1Exists && (
+                      <ExperienceBlock
+                        title={data.exp1Title}
+                        company={data.exp1Company}
+                        years={data.exp1Years}
+                        bullets={exp1Bullets}
+                      />
+                    )}
+
+                    {exp2Exists && (
+                      <ExperienceBlock
+                        title={data.exp2Title}
+                        company={data.exp2Company}
+                        years={data.exp2Years}
+                        bullets={exp2Bullets}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="footer-note">
+              {txt(
+                "20 Soruluk CV Aracından üretildi • Soldaki alanları güncelle, tekrar PDF al.",
+                "Generated with the Multi-step CV Builder • Edit inputs on the left and re-export as PDF."
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      function ExperienceBlock({ title, company, years, bullets }) {
+        if (!title && !company && !years && !bullets.length) return null;
+        return (
+          <div style={{ marginBottom: 6 }}>
+            {title && <div className="cv-item-title">{title}</div>}
+            {(company || years) && (
+              <div className="cv-item-meta">
+                {company}
+                {company && years && " • "}
+                {years}
+              </div>
+            )}
+            {bullets.length > 0 && (
+              <ul className="cv-bullets">
+                {bullets.map((b, i) => (
+                  <li key={i}>{b}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      }
+
+      function splitByComma(value) {
+        if (!value) return [];
+        return value
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean);
+      }
+
+      function splitByLines(value) {
+        if (!value) return [];
+        return value
+          .split("\n")
+          .map((v) => v.trim())
+          .filter(Boolean);
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
