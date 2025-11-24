@@ -824,27 +824,39 @@
         };
 
         const exportPdf = async () => {
-          const page = document.getElementById("cv-page-root");
-          if (!page || !window.jspdf || !window.html2canvas && !window.html2canvas) return;
+  const page = document.getElementById("cv-page-root");
+  if (!page) return;
 
-          const { jsPDF } = window.jspdf;
-          const pdf = new jsPDF("p", "mm", "a4");
+  try {
+    // DOM'dan canvas al
+    const canvas = await html2canvas(page, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#f8f5e9",
+    });
 
-          // Geçici olarak sayfayı biraz büyüt (render kalitesi için)
-          const canvas = await html2canvas(page, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: "#f8f5e9",
-          });
+    const imgData = canvas.toDataURL("image/png");
 
-          const imgData = canvas.toDataURL("image/png");
-          const imgProps = pdf.getImageProperties(imgData);
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    // jsPDF globalini al
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) {
+      console.error("jsPDF yüklenemedi");
+      alert("PDF motoru yüklenemedi (jsPDF). Script etiketlerini kontrol et.");
+      return;
+    }
 
-          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-          pdf.save("cv.pdf");
-        };
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save("cv.pdf");
+  } catch (err) {
+    console.error("PDF oluşturma hatası:", err);
+    alert("PDF oluştururken bir hata oluştu. Detay için konsola bak (F12).");
+  }
+};
+
 
         const toggleAll = () => setShowAll((prev) => !prev);
 
